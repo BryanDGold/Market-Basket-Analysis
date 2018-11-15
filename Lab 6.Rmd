@@ -1,0 +1,123 @@
+---
+title: "Lab 6"
+output: 
+html_document:
+  toc: TRUE
+  toc_depth: 2
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(arules)
+
+```
+
+##Data Preparation
+
+```{r}
+groceries <- read.transactions("groceries.csv", sep = ",")
+
+#Since we are loading transactional data, we need to use "read.transactions" instead of "read.csv".
+
+```
+
+```{r}
+summary(groceries)
+
+#The output 9835 rows refers to the number of transactions, and the output 169 columns refers to the 169 different items that might appear in someone's basket. The density value of .026(2.6%) refers to the proportion of nonzero matrix cells. We can use this value to determine that there were 43,367 items purchased during the store's 30 days of operating. We come to this conclusion by (9835*169) = 1662115 * .026 = 43367. From this output, we can also determine that whole milk appeared in 25.5% of transactions (2513/9835). The last portion of the output corresponds to the size of transactions. We can see that 2159 transactions only contain one item while only 1 transaction contained 32 items. Below that output, we can see that the mean level of items in each transction is 4.409.
+
+inspect(groceries[1:5])
+
+#Inspecting the first five transactions in our data.
+
+```
+
+##Visualizing Item Support - Item Frequency Plots
+
+```{r}
+itemFrequencyPlot(groceries, support  = 0.1)
+
+#Visualizing groceries with at least 10% support.
+
+itemFrequencyPlot(groceries, topN = 20)
+
+#Visualizing the top 20 items in decreasing support.
+
+```
+
+##Visualizing Transaction Data - Plotting the Sparse Matrix
+
+```{r}
+image(groceries[1:5])
+
+#The resulting matrix holds 5 rows and and 169 columns, indicating the 5 transactions and 169 possible items in those transactions.
+
+```
+
+```{r}
+image(sample(groceries, 100))
+
+#This creates a matrix diagram with 100 rows and 169 columns. A few of the columns seem to be more heavily populated than others, indicating possible popular items in the store.
+
+```
+
+##Training a Model on the Data
+
+```{r}
+groceryrules <- apriori(groceries, parameter = list(support = .006, confidence = .25, minlen = 2))
+
+#Using the apriori function with a support of 60 and confidence of 25%. The support value of .006, or 60 times in the month of data, was determined through thinking that this is the minimum amount of transactions necessary to see a pattern. The confidence value of .25 was determined by thinking that this value was ideal to eliminate the most unreliable rules while allowing some room to modify behavior with targeted promotions. Finally, we set a minlen value of 2 to eliminate rules with less than two items.
+
+groceryrules
+
+#There are 463 rules, which is fairly high. We'd like to see a lower number.
+
+```
+
+##Evaluating Model Performance
+
+```{r}
+summary(groceryrules)
+
+#In our rule set, 150 rules have only two items, while 297 have three, and 16 have four. The lift of a rule measures how much more likely one item or itemset is purchased relative to its typical rate of purchase, given that you know another item or itemset has been purchased.
+
+```
+
+##Improving Model Performance
+
+```{r}
+inspect(sort(groceryrules, by = "lift")[1:5])
+
+#With a lift of 3.96, implies that people who buy herbs are nearly four times more likely to buy root vegetables than the typical customer. Also the second rule states that whipped cream is 3 times as likely to be found in a cart with berries.
+
+```
+
+```{r}
+berryrules <- subset(groceryrules, items %in% "berries")
+inspect(berryrules)
+
+#In addition to whipped cream, berries are also frequently purchased with yogurt, other vegetables, and whole milk.
+
+```
+
+##Saving Association Rules to a File or Data Frame
+
+```{r}
+write(groceryrules, file = "groceryrules.csv",
+      sep = ",", quote = TRUE, row.names = FALSE)
+
+```
+
+```{r}
+groceryrules_df <- as(groceryrules, "data.frame")
+
+```
+
+```{r}
+str(groceryrules_df)
+
+```
+
